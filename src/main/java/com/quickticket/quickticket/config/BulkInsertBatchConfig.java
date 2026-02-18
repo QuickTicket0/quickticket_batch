@@ -1,50 +1,32 @@
+package com.quickticket.quickticket.config;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.configuration.support.DefaultBatchConfiguration;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
 @Configuration
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class BulkInsertBatchConfig extends DefaultBatchConfiguration {
-    private final EntityManagerFactory emf;
     private final JobRepository jobRepository;
-    private final PlatformTransactionManager transactionManager;
+    private final BulkInsertTasklet bulkInsertTasklet;
 
     @Bean
     public Job BatchInsertJob() {
         return new JobBuilder("BatchInsertJob", jobRepository)
-                .start(ticketAllocationStep())
+                .start(BatchInsertStep())
                 .build();
     }
 
     @Bean
     public Step BatchInsertStep() {
         return new StepBuilder("BatchInsertStep", jobRepository)
-                .<TicketIssueEntity, TicketIssueEntity>chunk(100)
-                .reader(ticketReader())
-                .processor(ticketAllocationProcessor())
-                .transactionManager(transactionManager)
+                .tasklet(bulkInsertTasklet)
                 .build();
     }
-
-    @Bean
-    public JpaPagingItemReader<TicketIssueEntity> ticketReader() {
-        return new JpaPagingItemReaderBuilder<TicketIssueEntity>()
-                .name("ticketReader")
-                .entityManagerFactory(emf)
-                .queryString("SELECT m FROM Member m WHERE m.active = true")
-                .pageSize(100)
-                .build();
-    }
-
-    @Bean
-    public JdbcBatchItemWriter<MyEntity> ticketWriter(DataSource dataSource) {
-        return new JdbcBatchItemWriterBuilder<MyEntity>()
-                .dataSource(dataSource)
-                .sql("INSERT INTO my_table (name, age) VALUES (:name, :age)")
-                .beanMapped()
-                .build();
-    }
-  
-    @Bean
-    public ItemProcessor<TicketIssueEntity, TicketIssueEntity> ticketAllocationProcessor() {
-        return ticket -> {
-
-            return ticket;
-        };
 }

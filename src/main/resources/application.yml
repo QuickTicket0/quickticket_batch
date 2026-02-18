@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: quickticket
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  cache:
+    type: redis
