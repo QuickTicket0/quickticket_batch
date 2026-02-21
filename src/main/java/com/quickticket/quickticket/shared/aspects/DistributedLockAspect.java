@@ -25,7 +25,7 @@ public class DistributedLockAspect {
     private final ExpressionParser parser = new SpelExpressionParser();
 
     @Around("@annotation(distributedLock)")
-    public Object around(ProceedingJoinPoint joinPoint, DistributedLock distributedLock)
+    public Object aroundDistributedLock(ProceedingJoinPoint joinPoint, DistributedLock distributedLock)
             throws Throwable {
 
         String lockKey = parseKey(joinPoint, distributedLock.key());
@@ -38,22 +38,42 @@ public class DistributedLockAspect {
         try {
             lockAcquired = rLock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS);
             if (!lockAcquired) {
-                //log.warn("[RedissonLock] 락 획득 실패 - lockKey: {}", lockKey);
                 throw new IllegalStateException("락 획득 실패 - lockKey: " + lockKey);
             }
-            //log.info("[RedissonLock] 락 획득 성공 - lockKey: {}", lockKey);
             return joinPoint.proceed();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("락 획득 중 인터럽트 발생", e);
         } finally {
             if (lockAcquired && rLock.isHeldByCurrentThread()) {
-                try {
-                    rLock.unlock();
-                    //log.info("[RedissonLock] 락 해제 완료 - lockKey: {}", lockKey);
-                } catch (IllegalMonitorStateException e) {
-                    //log.warn("[RedissonLock] 이미 해제된 락 또는 스레드 불일치 - lockKey: {}", lockKey, e);
-                }
+                rLock.unlock();
+            }
+        }
+    }
+
+    @Around("@annotation(distributedWriteLock)")
+    public Object aroundDistributedWriteLock(ProceedingJoinPoint joinPoint, DistributedWriteLock distributedWriteLock)
+            throws Throwable {
+
+        String lockKey = parseKey(joinPoint, distributedWriteLock.key());
+        long waitTime = distributedWriteLock.waitTime();
+        long leaseTime = distributedWriteLock.leaseTime();
+
+        RLock writeLock = redissonClient.getReadWriteLock(lockKey).writeLock();
+        boolean lockAcquired = false;
+
+        try {
+            lockAcquired = writeLock.tryLock(waitTime, leaseTime, TimeUnit.SECONDS);
+            if (!lockAcquired) {
+                throw new IllegalStateException("락 획득 실패 - lockKey: " + lockKey);
+            }
+            return joinPoint.proceed();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("락 획득 중 인터럽트 발생", e);
+        } finally {
+            if (lockAcquired && writeLock.isHeldByCurrentThread()) {
+                writeLock.unlock();
             }
         }
     }
