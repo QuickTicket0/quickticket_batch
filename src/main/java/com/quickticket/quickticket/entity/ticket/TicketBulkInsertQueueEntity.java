@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder(access = AccessLevel.PRIVATE)
-@RedisHash("sync:bulk-insert-queue:ticket-issue")
+@RedisHash("sync:ticket-issue")
 public class TicketBulkInsertQueueEntity {
     @Id
     private Long ticketIssueId;

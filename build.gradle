@@ -29,7 +29,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    implementation 'org.springframework.boot:spring-boot-starter-aop'
     implementation 'org.springframework.boot:spring-boot-starter-aspectj'
     implementation 'org.redisson:redisson-spring-boot-starter:4.1.0'
 

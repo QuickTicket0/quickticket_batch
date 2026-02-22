@@ -23,20 +23,25 @@ public class BulkInsertTasklet implements Tasklet {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectReader reader = new ObjectMapper().readerFor(TicketBulkInsertQueueEntity.class);
+    private final ObjectReader ticketQueueEntityReader = new ObjectMapper().readerFor(TicketBulkInsertQueueEntity.class);
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
-        List<String> rawData = redisTemplate.opsForList().leftPop("sync:bulk-insert-queue:ticket-issue", BATCH_SIZE);
+        List<String> keys = redisTemplate.opsForZSet().popMin("sync:bulk-insert-queue:ticket-issue", BATCH_SIZE)
+                .parallelStream()
+                .map(id -> "sync:ticket-issue:" + id)
+                .toList();
 
-        if (rawData == null || rawData.isEmpty()) {
+        if (keys.isEmpty()) {
             return RepeatStatus.FINISHED;
         }
+
+        List<String> rawData = redisTemplate.opsForValue().multiGet(keys);
 
         List<TicketBulkInsertQueueEntity> entities = rawData.parallelStream()
                 .map(json -> {
                     try {
-                        return (TicketBulkInsertQueueEntity) reader.readValue(json);
+                        return ticketQueueEntityReader.<TicketBulkInsertQueueEntity>readValue(json);
                     } catch (JsonProcessingException e) {
                         throw new RuntimeException(e);
                     }
@@ -62,6 +67,8 @@ public class BulkInsertTasklet implements Tasklet {
                 ps.setLong(9, entity.getUserId());
             }
         );
+
+        redisTemplate.delete(keys);
 
         return RepeatStatus.FINISHED;
     }
