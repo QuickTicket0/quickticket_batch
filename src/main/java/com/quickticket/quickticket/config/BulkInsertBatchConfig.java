@@ -13,20 +13,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @RequiredArgsConstructor
 public class BulkInsertBatchConfig extends DefaultBatchConfiguration {
-    private final JobRepository jobRepository;
     private final BulkInsertTasklet bulkInsertTasklet;
 
     @Bean
-    public Job BatchInsertJob() {
+    public Job batchInsertJob(JobRepository jobRepository, Step batchInsertStep) {
         return new JobBuilder("BatchInsertJob", jobRepository)
-                .start(BatchInsertStep())
+                .start(batchInsertStep)
                 .build();
     }
 
     @Bean
-    public Step BatchInsertStep() {
+    public Step batchInsertStep(JobRepository jobRepository) {
         return new StepBuilder("BatchInsertStep", jobRepository)
-                .tasklet(bulkInsertTasklet)
+                .tasklet(bulkInsertTasklet, getTransactionManager())
                 .build();
     }
 }
