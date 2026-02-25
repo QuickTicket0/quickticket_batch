@@ -3,6 +3,7 @@ package com.quickticket.quickticket.config;
 import lombok.RequiredArgsConstructor;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
+import org.redisson.codec.JsonJacksonCodec;
 import org.redisson.config.Config;
 import org.redisson.spring.data.connection.RedissonConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,7 +12,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.support.atomic.RedisAtomicLong;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 
@@ -38,6 +42,8 @@ public class RedisConfig {
                 .setRetryAttempts(3)
                 .setRetryInterval(1500);
 
+        config.setCodec(new JsonJacksonCodec());
+
         return Redisson.create(config);
     }
 
@@ -47,12 +53,30 @@ public class RedisConfig {
     }
 
     @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
+        var redisTemplate = new RedisTemplate<String, Object>();
+        redisTemplate.setConnectionFactory(connectionFactory);
+
+        redisTemplate.setKeySerializer(new StringRedisSerializer());
+        redisTemplate.setHashKeySerializer(new StringRedisSerializer());
+
+        var jsonSerializer = new JacksonJsonRedisSerializer<>(objectMapper, Object.class);
+
+        redisTemplate.setValueSerializer(jsonSerializer);
+        redisTemplate.setHashValueSerializer(jsonSerializer);
+
+        return redisTemplate;
+    }
+
+
+    @Bean
     public RedisCacheManager cacheManager(RedissonClient redissonClient) {
         var factory = new RedissonConnectionFactory(redissonClient);
 
         var config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
-                .disableCachingNullValues();
+                .disableCachingNullValues()
+                .computePrefixWith(prefix -> prefix + ":");
 
         return RedisCacheManager.builder(factory)
                 .cacheDefaults(config)
