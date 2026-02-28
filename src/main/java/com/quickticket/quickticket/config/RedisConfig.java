@@ -16,6 +16,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 
@@ -50,6 +51,13 @@ public class RedisConfig {
     @Bean
     public RedisConnectionFactory redisConnectionFactory(RedissonClient redissonClient) {
         return new RedissonConnectionFactory(redissonClient);
+    }
+
+    @Bean
+    public ObjectMapper jackson3ObjectMapper() {
+        return JsonMapper.builder()
+                .findAndAddModules()
+                .build();
     }
 
     @Bean
