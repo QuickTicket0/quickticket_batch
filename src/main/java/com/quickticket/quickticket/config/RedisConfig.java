@@ -61,8 +61,8 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
-        var redisTemplate = new RedisTemplate<String, Object>();
+    public RedisTemplate<?, ?> redisTemplate(RedisConnectionFactory connectionFactory, ObjectMapper objectMapper) {
+        var redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(connectionFactory);
 
         redisTemplate.setKeySerializer(new StringRedisSerializer());
@@ -75,7 +75,6 @@ public class RedisConfig {
 
         return redisTemplate;
     }
-
 
     @Bean
     public RedisCacheManager cacheManager(RedissonClient redissonClient) {

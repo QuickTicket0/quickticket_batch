@@ -1,20 +1,22 @@
 package com.quickticket.quickticket.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import com.quickticket.quickticket.entity.ticket.TicketBulkInsertQueueEntity;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.StepContribution;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 import java.sql.PreparedStatement;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -23,32 +25,38 @@ public class BulkInsertTasklet implements Tasklet {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectReader ticketQueueEntityReader = new ObjectMapper().readerFor(TicketBulkInsertQueueEntity.class);
+    private final ObjectMapper objectMapper;
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
         List<String> keys = redisTemplate.opsForZSet().popMin("sync:bulk-insert-queue:ticket-issue", BATCH_SIZE)
                 .parallelStream()
-                .map(id -> "sync:ticket-issue:" + id)
+                .map(id -> "sync:ticket-issue:" + id.getValue())
                 .toList();
 
         if (keys.isEmpty()) {
             return RepeatStatus.FINISHED;
         }
 
-        List<String> rawData = redisTemplate.opsForValue().multiGet(keys);
-
-        List<TicketBulkInsertQueueEntity> entities = rawData.parallelStream()
-                .map(json -> {
-                    try {
-                        return ticketQueueEntityReader.<TicketBulkInsertQueueEntity>readValue(json);
-                    } catch (JsonProcessingException e) {
-                        throw new RuntimeException(e);
+        List<Object> hashResults = redisTemplate.executePipelined(
+            new SessionCallback<Object>() {
+                @Override
+                public <K, V> Object execute(RedisOperations<K, V> operations) throws DataAccessException {
+                    for (String key : keys) {
+                        operations.opsForHash().entries((K) key);
                     }
-                })
-                .toList();
+                    return null;
+                }
+            }
+        );
 
-        String sql = "INSERT INTO TICKET_ISSUE (ticket_issue_id, canceled_at, created_at, person_number, ticket_status, waiting_number, payment_method_id, performance_id, user_id) " +
+        var entities = hashResults.stream()
+            .map(obj -> (Map<String, Object>) obj)
+            .filter(map -> map != null && !map.isEmpty())
+            .map(map -> objectMapper.convertValue(map, TicketBulkInsertQueueEntity.class))
+            .toList();
+
+        String sql = "INSERT INTO ticket_issue (ticket_issue_id, canceled_at, created_at, person_number, ticket_status, waiting_number, payment_method_id, performance_id, user_id) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         jdbcTemplate.batchUpdate(
