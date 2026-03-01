@@ -3,7 +3,7 @@ spec:
     group: quickticket-worker
   containers:
     - name: quickticket-worker
-      image: ${DOCKER_IMAGE_URI}
+      image: "${DOCKER_IMAGE_URI}"
       env:
         - name: PROD_DB_URL
           valueFrom:
