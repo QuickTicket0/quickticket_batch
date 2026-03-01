@@ -5,6 +5,9 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   cache:
     type: redis
+  threads:
+    virtual:
+      enabled: true
   batch:
     job:
       enabled: false
