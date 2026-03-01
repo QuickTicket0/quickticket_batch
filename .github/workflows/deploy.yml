@@ -32,6 +32,10 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Update Kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+
       - name: Set Image URI
         run: |
           URI="${{ secrets.DOCKER_REPOSITORY_URI }}:${{ github.sha }}"
