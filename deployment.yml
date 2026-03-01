@@ -1,3 +1,7 @@
+apiVersion: apps/v1     # 1. 필수: API 버전
+kind: Deployment        # 2. 필수: 리소스 종류
+metadata:
+  name: quickticket-worker
 spec:
   nodeSelector:
     group: quickticket-worker
