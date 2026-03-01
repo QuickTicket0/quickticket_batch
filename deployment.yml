@@ -1,36 +1,45 @@
-apiVersion: apps/v1     # 1. 필수: API 버전
-kind: Deployment        # 2. 필수: 리소스 종류
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: quickticket-worker
 spec:
-  nodeSelector:
-    group: quickticket-worker
-  containers:
-    - name: quickticket-worker
-      image: "${DOCKER_IMAGE_URI}"
-      env:
-        - name: PROD_DB_URL
-          valueFrom:
-            secretKeyRef:
-              name: quickticket-prod-db-master-secret
-              key: url
-        - name: PROD_DB_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: quickticket-prod-db-master-secret
-              key: username
-        - name: PROD_DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: quickticket-prod-db-master-secret
-              key: password
-        - name: PROD_REDIS_HOST
-          valueFrom:
-            secretKeyRef:
-              name: quickticket-prod-redis-secret
-              key: host
-        - name: PROD_REDIS_PORT
-          valueFrom:
-            secretKeyRef:
-              name: quickticket-prod-redis-secret
-              key: port
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quickticket-worker
+  template:
+    metadata:
+      labels:
+        app: quickticket-worker
+    spec:
+      nodeSelector:
+        group: quickticket-worker
+      containers:
+        - name: quickticket-worker
+          image: "${DOCKER_IMAGE_URI}"
+          env:
+            - name: PROD_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: quickticket-prod-db-master-secret
+                  key: url
+            - name: PROD_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: quickticket-prod-db-master-secret
+                  key: username
+            - name: PROD_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: quickticket-prod-db-master-secret
+                  key: password
+            - name: PROD_REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: quickticket-prod-redis-secret
+                  key: host
+            - name: PROD_REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: quickticket-prod-redis-secret
+                  key: port

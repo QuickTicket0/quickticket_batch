@@ -22,7 +22,7 @@ jobs:
           distribution: 'corretto'
 
       - name: AWS credential 설정
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ secrets.AWS_REGION }}
           aws-access-key-id: ${{ secrets.AWS_DEPLOYMENT_ACCESS_KEY }}
